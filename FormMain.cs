@@ -13,16 +13,60 @@ namespace JabraSwitcher
         public string DefaultInput { get; set; }
         public string JabraDongle { get; set; } = "Not Found";
         public string JabraHeadsetName { get; set; }
+        private readonly AppSettings _appSettings;
+        private readonly bool _startMinimized;
+        private bool _initialMinimizeHandled;
 
-        public FormMain()
+        public FormMain() : this(null, false) { }
+
+        public FormMain(AppSettings settings, bool startMinimized)
         {
             InitializeComponent();
+
+            _appSettings = settings ?? new AppSettings();
+            _startMinimized = startMinimized;
+
             notifyIcon.MouseClick += NotifyIcon_MouseClick;
             Resize += FormMain_Resize;
             FormClosing += FormMain_FormClosing;
 
             InitializeAudioDropDowns();
+            SelectSavedDevices();
             InitializeJabraSDK();
+        }
+
+        /// <summary>
+        /// Selects the saved default devices in the combo boxes, when they are still present.
+        /// </summary>
+        private void SelectSavedDevices()
+        {
+            SelectMatchingItem(comboBoxOutputs, _appSettings.DefaultOutput);
+            SelectMatchingItem(comboBoxInputs, _appSettings.DefaultInput);
+        }
+
+        private static void SelectMatchingItem(ComboBox comboBox, string deviceName)
+        {
+            if (string.IsNullOrEmpty(deviceName)) return;
+
+            var match = comboBox.Items.Cast<object>()
+                .FirstOrDefault(item => item.ToString().Contains(deviceName));
+            if (match != null) comboBox.SelectedItem = match;
+        }
+
+        /// <summary>
+        /// Keeps the window hidden on first show when configured to start minimized, so the
+        /// app starts in the tray. Setting WindowState in the constructor instead fires the
+        /// resize/hide path before the handle exists and crashes on ShowInTaskbar.
+        /// </summary>
+        protected override void SetVisibleCore(bool value)
+        {
+            if (_startMinimized && !_initialMinimizeHandled)
+            {
+                _initialMinimizeHandled = true;
+                value = false;
+            }
+
+            base.SetVisibleCore(value);
         }
 
         private async void InitializeJabraSDK()
@@ -35,7 +79,7 @@ namespace JabraSwitcher
                 if (IsJabraLink(device.Name))
                 {
                     JabraDongle = device.Name;
-                    label3.Invoke((MethodInvoker)(() => label3.Text = JabraDongle));
+                    labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
 
                     // Don't let Link take over, until a headset is connected
                     SwitchOutputDevice(DefaultOutput);
@@ -49,7 +93,7 @@ namespace JabraSwitcher
                     {
                         // Headset connected
                         JabraHeadsetName = connections[0].Device.Name;
-                        label3.Invoke((MethodInvoker)(() => label3.Text = $"{JabraDongle} -> {JabraHeadsetName}"));
+                        labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = $"{JabraDongle} -> {JabraHeadsetName}"));
                         ShowToast("Headset Connected", $"{JabraHeadsetName} has been connected.");
                         SwitchOutputDevice(JabraDongle);
                         SwitchInputDevice(JabraDongle);
@@ -57,7 +101,7 @@ namespace JabraSwitcher
                     else
                     {
                         // Headset disconnected
-                        label3.Invoke((MethodInvoker)(() => label3.Text = JabraDongle));
+                        labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
                         ShowToast("Headset Disconnected", $"{JabraHeadsetName} has been disconnected.");
                         JabraHeadsetName = string.Empty;
                         SwitchOutputDevice(DefaultOutput);
@@ -71,7 +115,7 @@ namespace JabraSwitcher
                 if (IsJabraLink(device.Name))
                 {
                     JabraDongle = "Not Found";
-                    label3.Invoke((MethodInvoker)(() => label3.Text = JabraDongle));
+                    labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
                 }
             });
 
@@ -88,21 +132,27 @@ namespace JabraSwitcher
 
         private void InitializeAudioDropDowns()
         {
-            MMDeviceEnumerator enumerator = new MMDeviceEnumerator(Guid.Empty);
-
-            DefaultInput = enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Console).DeviceFriendlyName;
-            foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
-            {
-                comboBoxInputs.Items.Add(device.DeviceFriendlyName);
-            }
+            DefaultInput = AudioDevices.GetDefaultName(DataFlow.Capture);
+            comboBoxInputs.Items.AddRange(AudioDevices.GetActiveNames(DataFlow.Capture).ToArray());
             comboBoxInputs.SelectedItem = DefaultInput;
 
-            DefaultOutput = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console).DeviceFriendlyName;
-            foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
-            {
-                comboBoxOutputs.Items.Add(device.DeviceFriendlyName);
-            }
+            DefaultOutput = AudioDevices.GetDefaultName(DataFlow.Render);
+            comboBoxOutputs.Items.AddRange(AudioDevices.GetActiveNames(DataFlow.Render).ToArray());
             comboBoxOutputs.SelectedItem = DefaultOutput;
+        }
+
+        private void SaveSettings()
+        {
+            _appSettings.DefaultInput = DefaultInput;
+            _appSettings.DefaultOutput = DefaultOutput;
+            try
+            {
+                _appSettings.Save();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to save settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void ComboBoxInputs_SelectedIndexChanged(object sender, EventArgs e)
@@ -129,25 +179,9 @@ namespace JabraSwitcher
             }
         }
 
-        private static void SwitchOutputDevice(string deviceName)
-        {
-            var enumerator = new MMDeviceEnumerator(Guid.Empty);
-            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-            var targetDevice = devices.FirstOrDefault(d => d.DeviceFriendlyName.Contains(deviceName));
-            if (targetDevice is null) { return; }
+        private static void SwitchOutputDevice(string deviceName) => AudioDevices.SetDefault(DataFlow.Render, deviceName);
 
-            enumerator.SetDefaultAudioEndpoint(targetDevice);
-        }
-
-        private static void SwitchInputDevice(string deviceName)
-        {
-            var enumerator = new MMDeviceEnumerator(Guid.Empty);
-            var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
-            var targetDevice = devices.FirstOrDefault(d => d.DeviceFriendlyName.Contains(deviceName));
-            if (targetDevice is null) { return; }
-
-            enumerator.SetDefaultAudioEndpoint(targetDevice);
-        }
+        private static void SwitchInputDevice(string deviceName) => AudioDevices.SetDefault(DataFlow.Capture, deviceName);
 
         #region NotifyIcon
 
@@ -198,6 +232,13 @@ namespace JabraSwitcher
             Show();
             WindowState = FormWindowState.Normal;
             Activate();
+        }
+
+        // Save button handler - add a Save button in designer and wire this up
+        private void SaveButton_Click(object sender, EventArgs e)
+        {
+            SaveSettings();
+            HideToTray();
         }
         #endregion
     }

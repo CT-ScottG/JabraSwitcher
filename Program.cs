@@ -1,6 +1,7 @@
-﻿using System;
-using System.Windows.Forms;
+using System;
 using System.Threading;
+using System.Windows.Forms;
+using CoreAudio;
 
 namespace JabraSwitcher
 {
@@ -20,9 +21,28 @@ namespace JabraSwitcher
                     return;
                 }
 
+                // Start minimized to the tray only when saved settings match the
+                // devices currently available; otherwise show the form to configure.
+                var settings = AppSettings.Load();
+                bool startMinimized = settings != null && ConfiguredDevicesAvailable(settings);
+
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new FormMain());
+                Application.Run(new FormMain(settings, startMinimized));
+            }
+        }
+
+        private static bool ConfiguredDevicesAvailable(AppSettings settings)
+        {
+            try
+            {
+                return AudioDevices.Exists(DataFlow.Render, settings.DefaultOutput)
+                    && AudioDevices.Exists(DataFlow.Capture, settings.DefaultInput);
+            }
+            catch
+            {
+                // If we can't enumerate audio devices, fall back to showing the form.
+                return false;
             }
         }
     }
