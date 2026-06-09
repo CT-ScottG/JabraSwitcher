@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace JabraSwitcher
 {
@@ -11,9 +12,18 @@ namespace JabraSwitcher
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormMain());
+            using (var mutex = new Mutex(true, "JabraSwitcherMutex", out bool createdNew))
+            {
+                if (!createdNew)
+                {
+                    MessageBox.Show("Another instance is already running.", "Jabra Switcher", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new FormMain());
+            }
         }
     }
 }
