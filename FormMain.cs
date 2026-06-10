@@ -39,7 +39,14 @@ namespace JabraSwitcher
             provider.DongleDisconnected += OnDongleDisconnected;
             provider.HeadsetConnected += OnHeadsetConnected;
             provider.HeadsetDisconnected += OnHeadsetDisconnected;
-            await provider.StartAsync();
+            try
+            {
+                await provider.StartAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to start headset provider: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OnDongleConnected(object sender, DeviceEventArgs e)
