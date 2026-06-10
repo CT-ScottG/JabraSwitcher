@@ -12,12 +12,19 @@ namespace JabraSwitcher
     /// </summary>
     internal static class AudioDevices
     {
-        /// <summary>Friendly name of the current default endpoint for the given flow.</summary>
+        /// <summary>Friendly name of the current default endpoint for the given flow, or null if none exists.</summary>
         public static string GetDefaultName(DataFlow flow)
         {
-            return new MMDeviceEnumerator(Guid.Empty)
-                .GetDefaultAudioEndpoint(flow, Role.Console)
-                .DeviceFriendlyName;
+            try
+            {
+                return new MMDeviceEnumerator(Guid.Empty)
+                    .GetDefaultAudioEndpoint(flow, Role.Console)
+                    .DeviceFriendlyName;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         /// <summary>Friendly names of every active endpoint for the given flow.</summary>

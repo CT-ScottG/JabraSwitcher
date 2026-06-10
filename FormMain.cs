@@ -130,11 +130,17 @@ namespace JabraSwitcher
         {
             DefaultInput = AudioDevices.GetDefaultName(DataFlow.Capture);
             comboBoxInputs.Items.AddRange(AudioDevices.GetActiveNames(DataFlow.Capture).ToArray());
-            comboBoxInputs.SelectedItem = DefaultInput;
+            if (DefaultInput != null)
+                comboBoxInputs.SelectedItem = DefaultInput;
+            else
+                comboBoxInputs.Enabled = false;
 
             DefaultOutput = AudioDevices.GetDefaultName(DataFlow.Render);
             comboBoxOutputs.Items.AddRange(AudioDevices.GetActiveNames(DataFlow.Render).ToArray());
-            comboBoxOutputs.SelectedItem = DefaultOutput;
+            if (DefaultOutput != null)
+                comboBoxOutputs.SelectedItem = DefaultOutput;
+            else
+                comboBoxOutputs.Enabled = false;
         }
 
         private void SaveSettings()
