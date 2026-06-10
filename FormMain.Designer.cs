@@ -32,8 +32,8 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMain));
             this.comboBoxOutputs = new System.Windows.Forms.ComboBox();
             this.labelDefaultOutput = new System.Windows.Forms.Label();
-            this.labelJabraDongle = new System.Windows.Forms.Label();
-            this.labelJabraDongleName = new System.Windows.Forms.Label();
+            this.labelDongle = new System.Windows.Forms.Label();
+            this.labelDongleName = new System.Windows.Forms.Label();
             this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.labelDefaultInput = new System.Windows.Forms.Label();
             this.comboBoxInputs = new System.Windows.Forms.ComboBox();
@@ -60,26 +60,26 @@
             this.labelDefaultOutput.Size = new System.Drawing.Size(76, 13);
             this.labelDefaultOutput.TabIndex = 1;
             this.labelDefaultOutput.Text = "Default Output";
-            // 
-            // labelJabraDongle
-            // 
-            this.labelJabraDongle.AutoSize = true;
-            this.labelJabraDongle.Location = new System.Drawing.Point(11, 62);
-            this.labelJabraDongle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.labelJabraDongle.Name = "labelJabraDongle";
-            this.labelJabraDongle.Size = new System.Drawing.Size(70, 13);
-            this.labelJabraDongle.TabIndex = 2;
-            this.labelJabraDongle.Text = "Jabra Dongle";
-            // 
-            // labelJabraDongleName
-            // 
-            this.labelJabraDongleName.AutoSize = true;
-            this.labelJabraDongleName.Location = new System.Drawing.Point(88, 62);
-            this.labelJabraDongleName.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.labelJabraDongleName.Name = "labelJabraDongleName";
-            this.labelJabraDongleName.Size = new System.Drawing.Size(57, 13);
-            this.labelJabraDongleName.TabIndex = 3;
-            this.labelJabraDongleName.Text = "Not Found";
+            //
+            // labelDongle
+            //
+            this.labelDongle.AutoSize = true;
+            this.labelDongle.Location = new System.Drawing.Point(11, 62);
+            this.labelDongle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.labelDongle.Name = "labelDongle";
+            this.labelDongle.Size = new System.Drawing.Size(70, 13);
+            this.labelDongle.TabIndex = 2;
+            this.labelDongle.Text = "Dongle";
+            //
+            // labelDongleName
+            //
+            this.labelDongleName.AutoSize = true;
+            this.labelDongleName.Location = new System.Drawing.Point(88, 62);
+            this.labelDongleName.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.labelDongleName.Name = "labelDongleName";
+            this.labelDongleName.Size = new System.Drawing.Size(57, 13);
+            this.labelDongleName.TabIndex = 3;
+            this.labelDongleName.Text = "Not Found";
             // 
             // notifyIcon
             // 
@@ -126,8 +126,8 @@
             this.Controls.Add(this.labelDefaultInput);
             this.Controls.Add(this.comboBoxInputs);
             this.Controls.Add(this.buttonSave);
-            this.Controls.Add(this.labelJabraDongleName);
-            this.Controls.Add(this.labelJabraDongle);
+            this.Controls.Add(this.labelDongleName);
+            this.Controls.Add(this.labelDongle);
             this.Controls.Add(this.labelDefaultOutput);
             this.Controls.Add(this.comboBoxOutputs);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -145,8 +145,8 @@
 
         private System.Windows.Forms.ComboBox comboBoxOutputs;
         private System.Windows.Forms.Label labelDefaultOutput;
-        private System.Windows.Forms.Label labelJabraDongle;
-        private System.Windows.Forms.Label labelJabraDongleName;
+        private System.Windows.Forms.Label labelDongle;
+        private System.Windows.Forms.Label labelDongleName;
         private System.Windows.Forms.NotifyIcon notifyIcon;
         private System.Windows.Forms.Label labelDefaultInput;
         private System.Windows.Forms.ComboBox comboBoxInputs;

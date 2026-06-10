@@ -1,6 +1,4 @@
-﻿using CoreAudio;
-using Jabra.NET.Sdk.Core;
-using Jabra.NET.Sdk.Core.Types;
+using CoreAudio;
 using System;
 using System.Linq;
 using System.Windows.Forms;
@@ -11,8 +9,8 @@ namespace JabraSwitcher
     {
         public string DefaultOutput { get; set; }
         public string DefaultInput { get; set; }
-        public string JabraDongle { get; set; } = "Not Found";
-        public string JabraHeadsetName { get; set; }
+        private string _dongleName = "Not Found";
+        private bool _headsetConnected;
         private readonly AppSettings _appSettings;
         private readonly bool _startMinimized;
         private bool _initialMinimizeHandled;
@@ -32,7 +30,59 @@ namespace JabraSwitcher
 
             InitializeAudioDropDowns();
             SelectSavedDevices();
-            InitializeJabraSDK();
+            StartProvider(new JabraProvider());
+        }
+
+        private async void StartProvider(IHeadsetProvider provider)
+        {
+            provider.DongleConnected += OnDongleConnected;
+            provider.DongleDisconnected += OnDongleDisconnected;
+            provider.HeadsetConnected += OnHeadsetConnected;
+            provider.HeadsetDisconnected += OnHeadsetDisconnected;
+            await provider.StartAsync();
+        }
+
+        private void OnDongleConnected(object sender, DeviceEventArgs e)
+        {
+            _dongleName = e.DeviceName;
+            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            SwitchToSpeakers();
+        }
+
+        private void OnDongleDisconnected(object sender, DeviceEventArgs e)
+        {
+            _dongleName = "Not Found";
+            _headsetConnected = false;
+            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            SwitchToSpeakers();
+        }
+
+        private void OnHeadsetConnected(object sender, DeviceEventArgs e)
+        {
+            _headsetConnected = true;
+            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = $"{_dongleName} -> {e.DeviceName}"));
+            ShowToast("Headset Connected", $"{e.DeviceName} has been connected.");
+            SwitchToHeadset();
+        }
+
+        private void OnHeadsetDisconnected(object sender, DeviceEventArgs e)
+        {
+            _headsetConnected = false;
+            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            ShowToast("Headset Disconnected", $"{e.DeviceName} has been disconnected.");
+            SwitchToSpeakers();
+        }
+
+        private void SwitchToHeadset()
+        {
+            SwitchOutputDevice(_dongleName);
+            SwitchInputDevice(_dongleName);
+        }
+
+        private void SwitchToSpeakers()
+        {
+            SwitchOutputDevice(DefaultOutput);
+            SwitchInputDevice(DefaultInput);
         }
 
         /// <summary>
@@ -69,70 +119,6 @@ namespace JabraSwitcher
             base.SetVisibleCore(value);
         }
 
-        private async void InitializeJabraSDK()
-        {
-            var config = new Config(partnerKey: string.Empty);
-            IManualApi jabraSdk = Init.InitManualSdk(config);
-
-            jabraSdk.DeviceAdded.Subscribe(device =>
-            {
-                if (IsJabraLink(device.Name))
-                {
-                    JabraDongle = device.Name;
-                    labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
-
-                    // Don't let Link take over, until a headset is connected
-                    SwitchOutputDevice(DefaultOutput);
-                    SwitchInputDevice(DefaultInput);
-                    return;
-                }
-
-                device.ConnectionList.Subscribe(connections =>
-                {
-                    if (connections.Count > 0)
-                    {
-                        // Headset connected
-                        JabraHeadsetName = connections[0].Device.Name;
-                        labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = $"{JabraDongle} -> {JabraHeadsetName}"));
-                        ShowToast("Headset Connected", $"{JabraHeadsetName} has been connected.");
-                        SwitchOutputDevice(JabraDongle);
-                        SwitchInputDevice(JabraDongle);
-                    }
-                    else
-                    {
-                        // Headset disconnected
-                        labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
-                        ShowToast("Headset Disconnected", $"{JabraHeadsetName} has been disconnected.");
-                        JabraHeadsetName = string.Empty;
-                        SwitchOutputDevice(DefaultOutput);
-                        SwitchInputDevice(DefaultInput);
-                    }
-                });
-            });
-
-            jabraSdk.DeviceRemoved.Subscribe(device =>
-            {
-                if (IsJabraLink(device.Name))
-                {
-                    JabraDongle = "Not Found";
-                    JabraHeadsetName = string.Empty;
-                    labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
-                    SwitchOutputDevice(DefaultOutput);
-                    SwitchInputDevice(DefaultInput);
-                }
-            });
-
-            await jabraSdk.Start();
-        }
-
-        private static bool IsJabraLink(string deviceName)
-        {
-            return deviceName.Contains("Jabra Link 360")
-                || deviceName.Contains("Jabra Link 370")
-                || deviceName.Contains("Jabra Link 380")
-                || deviceName.Contains("Jabra Link 390");
-        }
-
         private void InitializeAudioDropDowns()
         {
             DefaultInput = AudioDevices.GetDefaultName(DataFlow.Capture);
@@ -161,9 +147,7 @@ namespace JabraSwitcher
         private void ComboBoxInputs_SelectedIndexChanged(object sender, EventArgs e)
         {
             var selectedInput = comboBoxInputs.SelectedItem.ToString();
-
-            // Only switch if headset is not connected, and default device is different.
-            if (string.IsNullOrEmpty(JabraHeadsetName) && DefaultInput != selectedInput)
+            if (!_headsetConnected && DefaultInput != selectedInput)
             {
                 DefaultInput = selectedInput;
                 SwitchInputDevice(selectedInput);
@@ -173,9 +157,7 @@ namespace JabraSwitcher
         private void ComboBoxOutputs_SelectedIndexChanged(object sender, EventArgs e)
         {
             var selectedOutput = comboBoxOutputs.SelectedItem.ToString();
-
-            // Only switch if headset is not connected, and default device is different.
-            if (string.IsNullOrEmpty(JabraHeadsetName) && DefaultOutput != selectedOutput)
+            if (!_headsetConnected && DefaultOutput != selectedOutput)
             {
                 DefaultOutput = selectedOutput;
                 SwitchOutputDevice(selectedOutput);
@@ -237,12 +219,12 @@ namespace JabraSwitcher
             Activate();
         }
 
-        // Save button handler - add a Save button in designer and wire this up
         private void SaveButton_Click(object sender, EventArgs e)
         {
             SaveSettings();
             HideToTray();
         }
+
         #endregion
     }
 }
