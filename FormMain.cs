@@ -115,7 +115,10 @@ namespace JabraSwitcher
                 if (IsJabraLink(device.Name))
                 {
                     JabraDongle = "Not Found";
+                    JabraHeadsetName = string.Empty;
                     labelJabraDongleName.Invoke((MethodInvoker)(() => labelJabraDongleName.Text = JabraDongle));
+                    SwitchOutputDevice(DefaultOutput);
+                    SwitchInputDevice(DefaultInput);
                 }
             });
 
