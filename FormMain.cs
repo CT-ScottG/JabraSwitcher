@@ -49,10 +49,18 @@ namespace JabraSwitcher
             }
         }
 
+        private void SetDongleLabel(string text)
+        {
+            if (IsHandleCreated)
+                labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = text));
+            else
+                labelDongleName.Text = text;
+        }
+
         private void OnDongleConnected(object sender, DeviceEventArgs e)
         {
             _dongleName = e.DeviceName;
-            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            SetDongleLabel(_dongleName);
             SwitchToSpeakers();
         }
 
@@ -60,14 +68,14 @@ namespace JabraSwitcher
         {
             _dongleName = "Not Found";
             _headsetConnected = false;
-            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            SetDongleLabel(_dongleName);
             SwitchToSpeakers();
         }
 
         private void OnHeadsetConnected(object sender, DeviceEventArgs e)
         {
             _headsetConnected = true;
-            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = $"{_dongleName} -> {e.DeviceName}"));
+            SetDongleLabel($"{_dongleName} -> {e.DeviceName}");
             ShowToast("Headset Connected", $"{e.DeviceName} has been connected.");
             SwitchToHeadset();
         }
@@ -75,7 +83,7 @@ namespace JabraSwitcher
         private void OnHeadsetDisconnected(object sender, DeviceEventArgs e)
         {
             _headsetConnected = false;
-            labelDongleName.Invoke((MethodInvoker)(() => labelDongleName.Text = _dongleName));
+            SetDongleLabel(_dongleName);
             ShowToast("Headset Disconnected", $"{e.DeviceName} has been disconnected.");
             SwitchToSpeakers();
         }
